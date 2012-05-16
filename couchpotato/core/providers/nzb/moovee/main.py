@@ -1,5 +1,5 @@
 from couchpotato.core.event import fireEvent
-from couchpotato.core.helpers.encoding import tryUrlencode
+from couchpotato.core.helpers.encoding import tryUrlencode, replace_special_characters
 from couchpotato.core.helpers.variable import getTitle
 from couchpotato.core.logger import CPLog
 from couchpotato.core.providers.nzb.base import NZBProvider
@@ -27,7 +27,7 @@ class Moovee(NZBProvider):
         if self.isDisabled() or not self.isAvailable(self.urls['search']) or quality.get('hd', False):
             return results
 
-        q = '%s %s' % (getTitle(movie['library']), quality.get('identifier'))
+        q = '%s %s' % (replace_special_characters(getTitle(movie['library'])), quality.get('identifier'))
         url = self.urls['search'] % tryUrlencode(q)
 
         cache_key = 'moovee.%s' % q

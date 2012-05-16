@@ -1,6 +1,6 @@
 from couchpotato import get_session
 from couchpotato.core.event import addEvent, fireEvent
-from couchpotato.core.helpers.encoding import simplifyString, toUnicode
+from couchpotato.core.helpers.encoding import simplifyString, toUnicode, replace_special_characters
 from couchpotato.core.helpers.variable import md5, getImdb, getTitle
 from couchpotato.core.logger import CPLog
 from couchpotato.core.plugins.base import Plugin
@@ -264,7 +264,7 @@ class Searcher(Plugin):
         for movie_title in movie['library']['titles']:
             movie_words = re.split('\W+', simplifyString(movie_title['title']))
 
-            if self.correctName(nzb['name'], movie_title['title']):
+            if self.correctName(nzb['name'], replace_special_characters(movie_title['title'])):
                 # if no IMDB link, at least check year range 1
                 if len(movie_words) > 2 and self.correctYear([nzb['name']], movie['library']['year'], 1):
                     return True
