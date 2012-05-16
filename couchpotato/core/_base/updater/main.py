@@ -78,9 +78,9 @@ class Updater(Plugin):
 
 class BaseUpdater(Plugin):
 
-    repo_user = 'RuudBurger'
+    repo_user = 'drmonty'
     repo_name = 'CouchPotatoServer'
-    branch = 'master'
+    branch = 'develop'
 
     version = None
     update_failed = False
