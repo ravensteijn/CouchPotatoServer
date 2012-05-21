@@ -28,7 +28,7 @@ class NZBClub(NZBProvider, RSS):
         if self.isDisabled():
             return results
 
-        q = '"%s" %s %s' % (replace_special_characters(simplifyString(getTitle(movie['library'])), movie['library']['year'], quality.get('identifier'))
+        q = '"%s" %s %s' % (replace_special_characters(simplifyString(getTitle(movie['library']))), movie['library']['year'], quality.get('identifier'))
         for ignored in Env.setting('ignored_words', 'searcher').split(','):
             q = '%s -%s' % (q, ignored.strip())
 
