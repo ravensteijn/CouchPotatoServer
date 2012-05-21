@@ -1,11 +1,7 @@
 from BeautifulSoup import BeautifulSoup
 from couchpotato.core.event import fireEvent
-<<<<<<< HEAD
-from couchpotato.core.helpers.encoding import toUnicode, tryUrlencode, replace_special_characters
-=======
 from couchpotato.core.helpers.encoding import toUnicode, tryUrlencode, \
-    simplifyString
->>>>>>> cb89e12e9740332e80e8cfc59c25a3938c926868
+    simplifyString, replace_special_characters
 from couchpotato.core.helpers.rss import RSS
 from couchpotato.core.helpers.variable import tryInt, getTitle
 from couchpotato.core.logger import CPLog
@@ -32,11 +28,7 @@ class NZBClub(NZBProvider, RSS):
         if self.isDisabled():
             return results
 
-<<<<<<< HEAD
-        q = '"%s" %s %s' % (replace_special_characters(getTitle(movie['library'])), movie['library']['year'], quality.get('identifier'))
-=======
-        q = '"%s" %s %s' % (simplifyString(getTitle(movie['library'])), movie['library']['year'], quality.get('identifier'))
->>>>>>> cb89e12e9740332e80e8cfc59c25a3938c926868
+        q = '"%s" %s %s' % (replace_special_characters(simplifyString(getTitle(movie['library'])), movie['library']['year'], quality.get('identifier'))
         for ignored in Env.setting('ignored_words', 'searcher').split(','):
             q = '%s -%s' % (q, ignored.strip())
 
