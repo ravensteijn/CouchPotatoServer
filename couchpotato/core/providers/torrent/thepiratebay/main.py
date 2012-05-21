@@ -32,7 +32,7 @@ class ThePirateBay(TorrentProvider):
     def find(self, movie, quality, type):
 
         results = []
-        if not self.enabled() or not self.isAvailable(self.apiUrl):
+        if not self.enabled():
             return results
 
         url = self.apiUrl % (quote_plus(self.toSearchString(replace_special_characters(movie.name) + ' ' + quality) + self.makeIgnoreString(type)), self.getCatId(type))

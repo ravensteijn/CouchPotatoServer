@@ -5,7 +5,7 @@ from couchpotato.core.helpers.variable import cleanHost, md5
 from couchpotato.core.logger import CPLog
 from couchpotato.core.plugins.base import Plugin
 from couchpotato.environment import Env
-from flask import request
+from tornado.ioloop import IOLoop
 from uuid import uuid4
 import os
 import platform
@@ -18,7 +18,7 @@ log = CPLog(__name__)
 
 class Core(Plugin):
 
-    ignore_restart = ['Core.crappyRestart', 'Core.crappyShutdown']
+    ignore_restart = ['Core.restart', 'Core.shutdown', 'Updater.check']
     shutdown_started = False
 
     def __init__(self):
@@ -37,8 +37,8 @@ class Core(Plugin):
             'desc': 'Get version.'
         })
 
-        addEvent('app.crappy_shutdown', self.crappyShutdown)
-        addEvent('app.crappy_restart', self.crappyRestart)
+        addEvent('app.shutdown', self.shutdown)
+        addEvent('app.restart', self.restart)
         addEvent('app.load', self.launchBrowser, priority = 1)
         addEvent('app.base_url', self.createBaseUrl)
         addEvent('app.api_url', self.createApiUrl)
@@ -59,34 +59,24 @@ class Core(Plugin):
             'succes': True
         })
 
-    def crappyShutdown(self):
-        if self.shutdown_started:
-            return
-
-        try:
-            self.urlopen('%s/app.shutdown' % self.createApiUrl(), show_error = False)
-            return True
-        except:
-            self.initShutdown()
-            return False
-
-    def crappyRestart(self):
-        if self.shutdown_started:
-            return
-
-        try:
-            self.urlopen('%s/app.restart' % self.createApiUrl(), show_error = False)
-            return True
-        except:
-            self.initShutdown(restart = True)
-            return False
-
     def shutdown(self):
-        self.initShutdown()
+        if self.shutdown_started:
+            return False
+
+        def shutdown():
+            self.initShutdown()
+        IOLoop.instance().add_callback(shutdown)
+
         return 'shutdown'
 
     def restart(self):
-        self.initShutdown(restart = True)
+        if self.shutdown_started:
+            return False
+
+        def restart():
+            self.initShutdown(restart = True)
+        IOLoop.instance().add_callback(restart)
+
         return 'restarting'
 
     def initShutdown(self, restart = False):
@@ -102,12 +92,15 @@ class Core(Plugin):
         log.debug('Every plugin got shutdown event')
 
         loop = True
+        starttime = time.time()
         while loop:
             log.debug('Asking who is running')
             still_running = fireEvent('plugin.running', merge = True)
             log.debug('Still running: %s' % still_running)
 
             if len(still_running) == 0:
+                break
+            elif starttime < time.time() - 30: # Always force break after 30s wait
                 break
 
             running = list(set(still_running) - set(self.ignore_restart))
@@ -121,7 +114,8 @@ class Core(Plugin):
         log.debug('Save to shutdown/restart')
 
         try:
-            request.environ.get('werkzeug.server.shutdown')()
+            Env.get('httpserver').stop()
+            IOLoop.instance().stop()
         except RuntimeError:
             pass
         except:

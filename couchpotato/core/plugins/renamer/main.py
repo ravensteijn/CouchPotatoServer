@@ -85,6 +85,7 @@ class Renamer(Plugin):
             movie_title = getTitle(group['library'])
 
             # Add _UNKNOWN_ if no library item is connected
+            unknown = False
             if not group['library'] or not movie_title:
                 if group['dirname']:
                     rename_files[group['parentdir']] = group['parentdir'].replace(group['dirname'], '_UNKNOWN_%s' % group['dirname'])
@@ -94,6 +95,7 @@ class Renamer(Plugin):
                             filename = os.path.basename(rename_me)
                             rename_files[rename_me] = rename_me.replace(filename, '_UNKNOWN_%s' % filename)
 
+                unknown = True
             # Rename the files using the library data
             else:
                 group['library'] = fireEvent('library.update', identifier = group['library']['identifier'], single = True)
@@ -129,6 +131,7 @@ class Renamer(Plugin):
                      'source': group['meta_data']['source'],
                      'resolution_width': group['meta_data'].get('resolution_width'),
                      'resolution_height': group['meta_data'].get('resolution_height'),
+                     'imdb_id': library['identifier'],
                 }
 
                 for file_type in group['files']:
@@ -368,12 +371,13 @@ class Renamer(Plugin):
                 except:
                     log.error('Failed removing %s: %s' % (group['parentdir'], traceback.format_exc()))
 
-            # Search for trailers etc
-            fireEventAsync('renamer.after', group)
+            if not unknown:
+                # Search for trailers etc
+                fireEventAsync('renamer.after', group)
 
-            # Notify on download
-            download_message = 'Downloaded %s (%s)' % (movie_title, replacements['quality'])
-            fireEventAsync('movie.downloaded', message = download_message, data = group)
+                # Notify on download
+                download_message = 'Downloaded %s (%s)' % (movie_title, replacements['quality'])
+                fireEventAsync('movie.downloaded', message = download_message, data = group)
 
             # Break if CP wants to shut down
             if self.shuttingDown():

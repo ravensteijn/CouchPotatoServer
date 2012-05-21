@@ -35,7 +35,7 @@ class KickAssTorrents(TorrentProvider):
     def search(self, movie, quality):
 
         results = []
-        if self.isDisabled() or not self.isAvailable(self.urls['test']):
+        if self.isDisabled():
             return results
 
         cache_key = 'kickasstorrents.%s.%s' % (movie['library']['identifier'], quality.get('identifier'))
@@ -78,6 +78,8 @@ class KickAssTorrents(TorrentProvider):
                                             new['id'] = temp.get('id')[-8:]
                                             new['name'] = link.text
                                             new['url'] = td.findAll('a', 'idownload')[1]['href']
+                                            if new['url'][:2] == '//':
+                                                new['url'] = 'http:%s' % new['url']
                                             new['score'] = 20 if td.find('a', 'iverif') else 0
                                         elif column_name is 'size':
                                             new['size'] = self.parseSize(td.text)
