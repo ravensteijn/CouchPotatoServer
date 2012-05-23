@@ -1,6 +1,6 @@
 from BeautifulSoup import BeautifulSoup
 from couchpotato.core.event import fireEvent
-from couchpotato.core.helpers.encoding import replace_special_characters
+from couchpotato.core.helpers.encoding import simplifyString
 from couchpotato.core.helpers.variable import tryInt, getTitle
 from couchpotato.core.logger import CPLog
 from couchpotato.core.providers.torrent.base import TorrentProvider
@@ -39,7 +39,7 @@ class KickAssTorrents(TorrentProvider):
             return results
 
         cache_key = 'kickasstorrents.%s.%s' % (movie['library']['identifier'], quality.get('identifier'))
-        data = self.getCache(cache_key, self.urls['search'] % (replace_special_characters(getTitle(movie['library'])), movie['library']['identifier'].replace('tt', '')))
+        data = self.getCache(cache_key, self.urls['search'] % (simplifyString(getTitle(movie['library'])), movie['library']['identifier'].replace('tt', '')))
         if data:
 
             cat_ids = self.getCatId(quality['identifier'])
@@ -138,4 +138,3 @@ class KickAssTorrents(TorrentProvider):
         data = gzipper.read()
 
         return data
-

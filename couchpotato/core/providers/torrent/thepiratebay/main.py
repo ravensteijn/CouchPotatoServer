@@ -1,6 +1,6 @@
 from couchpotato.core.logger import CPLog
 from couchpotato.core.providers.torrent.base import TorrentProvider
-from couchpotato.core.helpers.encoding import replace_special_characters
+from couchpotato.core.helpers.encoding import simplifyString
 
 log = CPLog(__name__)
 
@@ -35,7 +35,7 @@ class ThePirateBay(TorrentProvider):
         if not self.enabled():
             return results
 
-        url = self.apiUrl % (quote_plus(self.toSearchString(replace_special_characters(movie.name) + ' ' + quality) + self.makeIgnoreString(type)), self.getCatId(type))
+        url = self.apiUrl % (quote_plus(self.toSearchString(simplifyString(movie.name) + ' ' + quality) + self.makeIgnoreString(type)), self.getCatId(type))
 
         log.info('Searching: %s' % url)
 

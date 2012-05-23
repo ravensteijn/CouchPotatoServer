@@ -13,7 +13,13 @@ def toSafeString(original):
     return ''.join(c for c in cleanedFilename if c in valid_chars)
 
 def simplifyString(original):
-    string = stripAccents(original.lower())
+    s = original.replace(unichr(252), 'ue')
+    s = s.replace(unichr(220), 'Ue')
+    s = s.replace(unichr(228), 'ae')
+    s = s.replace(unichr(196), 'Ae')
+    s = s.replace(unichr(246), 'oe')
+    s = s.replace(unichr(214), 'Oe')
+    string = stripAccents(s.lower())
     string = toSafeString(' '.join(re.split('\W+', string)))
     split = re.split('\W+|_', string.lower())
     return toUnicode(' '.join(split))
@@ -70,12 +76,3 @@ def tryUrlencode(s):
                 new += letter
 
     return new
-
-def replace_special_characters(s):
-    s = s.replace(unichr(252), 'ue')
-    s = s.replace(unichr(220), 'Ue')
-    s = s.replace(unichr(228), 'ae')
-    s = s.replace(unichr(196), 'Ae')
-    s = s.replace(unichr(246), 'oe')
-    s = s.replace(unichr(214), 'Oe')
-    return s
