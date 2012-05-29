@@ -10,7 +10,7 @@ var MovieList = new Class({
 	},
 
 	movies: [],
-	movies_added: [],
+	movies_added: {},
 	letters: {},
 	filter: {
 		'startswith': null,
@@ -41,7 +41,7 @@ var MovieList = new Class({
 		var self = this;
 		window.scroll(0,0);
 
-		if(self.movies_added[notification.data.id])
+		if(!self.movies_added[notification.data.id])
 			self.createMovie(notification.data, 'top');
 	},
 
@@ -106,7 +106,7 @@ var MovieList = new Class({
 		m.fireEvent('injected');
 
 		self.movies.include(m)
-		self.movies_added.include(movie.id);
+		self.movies_added[movie.id] = true;
 	},
 
 	createNavigation: function(){
@@ -278,6 +278,7 @@ var MovieList = new Class({
 			'events': {
 				'click': function(e){
 					(e).preventDefault();
+					this.set('text', 'Deleting..')
 					Api.request('movie.delete', {
 						'data': {
 							'id': ids.join(','),
