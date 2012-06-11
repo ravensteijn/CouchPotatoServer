@@ -89,9 +89,9 @@ class Scanner(Plugin):
         addEvent('scanner.partnumber', self.getPartNumber)
 
         def after_rename(group):
-            return self.scanFilesToLibrary(self, folder = group['destination_dir'], files = group['renamed_files'])
+            return self.scanFilesToLibrary(folder = group['destination_dir'], files = group['renamed_files'])
 
-        addEvent('rename.after', after_rename)
+        addEvent('renamer.after', after_rename)
 
     def scanFilesToLibrary(self, folder = None, files = None):
 
@@ -103,14 +103,14 @@ class Scanner(Plugin):
             if group['library']:
                 fireEvent('release.add', group = group)
 
-    def scanFolderToLibrary(self, folder = None, newer_than = None, simple = True):
+    def scanFolderToLibrary(self, folder = None, newer_than = 0, simple = True):
 
         folder = os.path.normpath(folder)
 
         if not os.path.isdir(folder):
             return
 
-        groups = self.scan(folder = folder, simple = simple)
+        groups = self.scan(folder = folder, simple = simple, newer_than = newer_than)
 
         added_identifier = []
         while True and not self.shuttingDown():
@@ -131,7 +131,7 @@ class Scanner(Plugin):
         return added_identifier
 
 
-    def scan(self, folder = None, files = [], simple = False):
+    def scan(self, folder = None, files = [], simple = False, newer_than = 0):
 
         folder = os.path.normpath(folder)
 
@@ -296,13 +296,35 @@ class Scanner(Plugin):
             # Check if movie is fresh and maybe still unpacking, ignore files new then 1 minute
             file_too_new = False
             for cur_file in group['unsorted_files']:
-                file_time = os.path.getmtime(cur_file)
-                if file_time > time.time() - 60:
-                    file_too_new = tryInt(time.time() - file_time)
+                file_time = [os.path.getmtime(cur_file), os.path.getctime(cur_file)]
+                for t in file_time:
+                    if t > time.time() - 60:
+                        file_too_new = tryInt(time.time() - t)
+                        break
+
+                if file_too_new:
                     break
 
             if file_too_new:
-                log.info('Files seem to be still unpacking or just unpacked (created on %s), ignoring for now: %s' % (time.ctime(file_time), identifier))
+                log.info('Files seem to be still unpacking or just unpacked (created on %s), ignoring for now: %s' % (time.ctime(file_time[0]), identifier))
+
+                # Delete the unsorted list
+                del group['unsorted_files']
+
+                continue
+
+            # Only process movies newer than x
+            if newer_than and newer_than > 0:
+                for cur_file in group['unsorted_files']:
+                    file_time = [os.path.getmtime(cur_file), os.path.getctime(cur_file)]
+                    if file_time[0] > time.time() or file_time[1] > time.time():
+                        break
+
+                log.debug('None of the files have changed since %s for %s, skipping.' % (time.ctime(newer_than), identifier))
+
+                # Delete the unsorted list
+                del group['unsorted_files']
+
                 continue
 
             # Group extra (and easy) files first
