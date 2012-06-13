@@ -37,11 +37,11 @@ class ThePirateBay(TorrentProvider):
 
         url = self.apiUrl % (quote_plus(self.toSearchString(simplifyString(movie.name) + ' ' + quality) + self.makeIgnoreString(type)), self.getCatId(type))
 
-        log.info('Searching: %s' % url)
+        log.info('Searching: %s', url)
 
         data = self.urlopen(url)
         if not data:
-            log.error('Failed to get data from %s.' % url)
+            log.error('Failed to get data from %s.', url)
             return results
 
         try:
@@ -105,7 +105,7 @@ class ThePirateBay(TorrentProvider):
                         new.content = self.getInfo(new.detailUrl)
                         if self.isCorrectMovie(new, movie, type):
                             results.append(new)
-                            log.info('Found: %s' % new.name)
+                            log.info('Found: %s', new.name)
 
             return results
 
@@ -128,11 +128,11 @@ class ThePirateBay(TorrentProvider):
 
 
     def getInfo(self, url):
-        log.debug('Getting info: %s' % url)
+        log.debug('Getting info: %s', url)
 
         data = self.urlopen(url)
         if not data:
-            log.error('Failed to get data from %s.' % url)
+            log.error('Failed to get data from %s.', url)
             return ''
 
         div = SoupStrainer('div')

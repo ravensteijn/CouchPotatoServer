@@ -1,11 +1,10 @@
 from couchpotato import get_session
 from couchpotato.core.event import fireEvent, addEvent
-from couchpotato.core.helpers.encoding import toUnicode, simplifyString
+from couchpotato.core.helpers.encoding import toUnicode, simplifyString, ss
 from couchpotato.core.helpers.variable import getExt, getImdb, tryInt
 from couchpotato.core.logger import CPLog
 from couchpotato.core.plugins.base import Plugin
 from couchpotato.core.settings.model import File, Movie
-from couchpotato.environment import Env
 from enzyme.exceptions import NoParserError, ParseError
 from guessit import guess_movie_info
 from subliminal.videos import Video
@@ -133,10 +132,10 @@ class Scanner(Plugin):
 
     def scan(self, folder = None, files = [], simple = False, newer_than = 0):
 
-        folder = os.path.normpath(folder)
+        folder = ss(os.path.normpath(folder))
 
         if not folder or not os.path.isdir(folder):
-            log.error('Folder doesn\'t exists: %s' % folder)
+            log.error('Folder doesn\'t exists: %s', folder)
             return {}
 
         # Get movie "master" files
@@ -147,19 +146,11 @@ class Scanner(Plugin):
         if len(files) == 0:
             try:
                 files = []
-                for root, dirs, walk_files in os.walk(toUnicode(folder)):
+                for root, dirs, walk_files in os.walk(folder):
                     for filename in walk_files:
                         files.append(os.path.join(root, filename))
             except:
-                try:
-                    files = []
-                    folder = toUnicode(folder).encode(Env.get('encoding'))
-                    log.info('Trying to convert unicode to str path: %s, %s' % (folder, type(folder)))
-                    for root, dirs, walk_files in os.walk(folder):
-                        for filename in walk_files:
-                            files.append(os.path.join(root, filename))
-                except:
-                    log.error('Failed getting files from %s: %s' % (folder, traceback.format_exc()))
+                log.error('Failed getting files from %s: %s', (folder, traceback.format_exc()))
 
         db = get_session()
 
@@ -215,7 +206,7 @@ class Scanner(Plugin):
         for identifier, group in movie_files.iteritems():
             if identifier not in group['identifiers'] and len(identifier) > 0: group['identifiers'].append(identifier)
 
-            log.debug('Grouping files: %s' % identifier)
+            log.debug('Grouping files: %s', identifier)
 
             for file_path in group['unsorted_files']:
                 wo_ext = file_path[:-(len(getExt(file_path)) + 1)]
@@ -241,7 +232,7 @@ class Scanner(Plugin):
         # Group the files based on the identifier
         delete_identifiers = []
         for identifier, found_files in self.path_identifiers.iteritems():
-            log.debug('Grouping files on identifier: %s' % identifier)
+            log.debug('Grouping files on identifier: %s', identifier)
 
             group = movie_files.get(identifier)
             if group:
@@ -257,13 +248,14 @@ class Scanner(Plugin):
 
         # Cleaning up used
         for identifier in delete_identifiers:
-            del self.path_identifiers[identifier]
+            if self.path_identifiers.get(identifier):
+                del self.path_identifiers[identifier]
         del delete_identifiers
 
         # Group based on folder
         delete_identifiers = []
         for identifier, found_files in self.path_identifiers.iteritems():
-            log.debug('Grouping files on foldername: %s' % identifier)
+            log.debug('Grouping files on foldername: %s', identifier)
 
             for ff in found_files:
                 new_identifier = self.createStringIdentifier(os.path.dirname(ff), folder)
@@ -282,7 +274,8 @@ class Scanner(Plugin):
 
         # Cleaning up used
         for identifier in delete_identifiers:
-            del self.path_identifiers[identifier]
+            if self.path_identifiers.get(identifier):
+                del self.path_identifiers[identifier]
         del delete_identifiers
 
         # Determine file types
@@ -306,7 +299,7 @@ class Scanner(Plugin):
                     break
 
             if file_too_new:
-                log.info('Files seem to be still unpacking or just unpacked (created on %s), ignoring for now: %s' % (time.ctime(file_time[0]), identifier))
+                log.info('Files seem to be still unpacking or just unpacked (created on %s), ignoring for now: %s', (time.ctime(file_time[0]), identifier))
 
                 # Delete the unsorted list
                 del group['unsorted_files']
@@ -320,7 +313,7 @@ class Scanner(Plugin):
                     if file_time[0] > time.time() or file_time[1] > time.time():
                         break
 
-                log.debug('None of the files have changed since %s for %s, skipping.' % (time.ctime(newer_than), identifier))
+                log.debug('None of the files have changed since %s for %s, skipping.', (time.ctime(newer_than), identifier))
 
                 # Delete the unsorted list
                 del group['unsorted_files']
@@ -346,10 +339,10 @@ class Scanner(Plugin):
                 group['files']['movie'] = self.getMediaFiles(group['unsorted_files'])
 
             if len(group['files']['movie']) == 0:
-                log.error('Couldn\t find any movie files for %s' % identifier)
+                log.error('Couldn\t find any movie files for %s', identifier)
                 continue
 
-            log.debug('Getting metadata for %s' % identifier)
+            log.debug('Getting metadata for %s', identifier)
             group['meta_data'] = self.getMetaData(group)
 
             # Subtitle meta
@@ -382,7 +375,7 @@ class Scanner(Plugin):
             # Determine movie
             group['library'] = self.determineMovie(group)
             if not group['library']:
-                log.error('Unable to determine movie: %s' % group['identifiers'])
+                log.error('Unable to determine movie: %s', group['identifiers'])
             else:
                 movie = db.query(Movie).filter_by(library_id = group['library']['id']).first()
                 group['movie_id'] = None if not movie else movie.id
@@ -395,9 +388,9 @@ class Scanner(Plugin):
         self.path_identifiers = {}
 
         if len(processed_movies) > 0:
-            log.info('Found %s movies in the folder %s' % (len(processed_movies), folder))
+            log.info('Found %s movies in the folder %s', (len(processed_movies), folder))
         else:
-            log.debug('Found no movies in the folder %s' % (folder))
+            log.debug('Found no movies in the folder %s', (folder))
         return processed_movies
 
     def getMetaData(self, group):
@@ -417,7 +410,7 @@ class Scanner(Plugin):
                 data['resolution_height'] = meta.get('resolution_height', 480)
                 data['aspect'] = meta.get('resolution_width', 720) / meta.get('resolution_height', 480)
             except:
-                log.debug('Error parsing metadata: %s %s' % (cur_file, traceback.format_exc()))
+                log.debug('Error parsing metadata: %s %s', (cur_file, traceback.format_exc()))
                 pass
 
             if data.get('audio'): break
@@ -445,11 +438,11 @@ class Scanner(Plugin):
                 'resolution_height': tryInt(p.video[0].height),
             }
         except ParseError:
-            log.debug('Failed to parse meta for %s' % filename)
+            log.debug('Failed to parse meta for %s', filename)
         except NoParserError:
-            log.debug('No parser found for %s' % filename)
+            log.debug('No parser found for %s', filename)
         except:
-            log.debug('Failed parsing %s' % filename)
+            log.debug('Failed parsing %s', filename)
 
         return {}
 
@@ -471,7 +464,7 @@ class Scanner(Plugin):
                     if s.language and s.path not in paths:
                         detected_languages[s.path] = [s.language]
         except:
-            log.debug('Failed parsing subtitle languages for %s: %s' % (paths, traceback.format_exc()))
+            log.debug('Failed parsing subtitle languages for %s: %s', (paths, traceback.format_exc()))
 
         # IDX
         for extra in group['files']['subtitle_extra']:
@@ -487,7 +480,7 @@ class Scanner(Plugin):
                     if len(idx_langs) > 0 and os.path.isfile(sub_file):
                         detected_languages[sub_file] = idx_langs
             except:
-                log.error('Failed parsing subtitle idx for %s: %s' % (extra, traceback.format_exc()))
+                log.error('Failed parsing subtitle idx for %s: %s', (extra, traceback.format_exc()))
 
         return detected_languages
 
@@ -500,7 +493,7 @@ class Scanner(Plugin):
         for cur_file in files['movie']:
             imdb_id = self.getCPImdb(cur_file)
             if imdb_id:
-                log.debug('Found movie via CP tag: %s' % cur_file)
+                log.debug('Found movie via CP tag: %s', cur_file)
                 break
 
         # Check and see if nfo contains the imdb-id
@@ -509,7 +502,7 @@ class Scanner(Plugin):
                 for nfo_file in files['nfo']:
                     imdb_id = getImdb(nfo_file)
                     if imdb_id:
-                        log.debug('Found movie via nfo file: %s' % nfo_file)
+                        log.debug('Found movie via nfo file: %s', nfo_file)
                         break
             except:
                 pass
@@ -521,7 +514,7 @@ class Scanner(Plugin):
                     for filetype_file in files[filetype]:
                         imdb_id = getImdb(filetype_file, check_inside = False)
                         if imdb_id:
-                            log.debug('Found movie via imdb in filename: %s' % nfo_file)
+                            log.debug('Found movie via imdb in filename: %s', nfo_file)
                             break
             except:
                 pass
@@ -533,7 +526,7 @@ class Scanner(Plugin):
                 f = db.query(File).filter_by(path = toUnicode(cur_file)).first()
                 try:
                     imdb_id = f.library[0].identifier
-                    log.debug('Found movie via database: %s' % cur_file)
+                    log.debug('Found movie via database: %s', cur_file)
                     break
                 except:
                     pass
@@ -547,7 +540,7 @@ class Scanner(Plugin):
                 if len(movie) > 0:
                     imdb_id = movie[0]['imdb']
                     if imdb_id:
-                        log.debug('Found movie via OpenSubtitleHash: %s' % cur_file)
+                        log.debug('Found movie via OpenSubtitleHash: %s', cur_file)
                         break
 
         # Search based on identifiers
@@ -564,17 +557,17 @@ class Scanner(Plugin):
 
                         if len(movie) > 0:
                             imdb_id = movie[0]['imdb']
-                            log.debug('Found movie via search: %s' % cur_file)
+                            log.debug('Found movie via search: %s', cur_file)
                             if imdb_id: break
                 else:
-                    log.debug('Identifier to short to use for search: %s' % identifier)
+                    log.debug('Identifier to short to use for search: %s', identifier)
 
         if imdb_id:
             return fireEvent('library.add', attrs = {
                 'identifier': imdb_id
             }, update_after = False, single = True)
 
-        log.error('No imdb_id found for %s. Add a NFO file with IMDB id or add the year to the filename.' % group['identifiers'])
+        log.error('No imdb_id found for %s. Add a NFO file with IMDB id or add the year to the filename.', group['identifiers'])
         return {}
 
     def getCPImdb(self, string):
@@ -663,17 +656,17 @@ class Scanner(Plugin):
         # ignoredpaths
         for i in self.ignored_in_path:
             if i in filename.lower():
-                log.debug('Ignored "%s" contains "%s".' % (filename, i))
+                log.debug('Ignored "%s" contains "%s".', (filename, i))
                 return False
 
         # Sample file
         if self.isSampleFile(filename):
-            log.debug('Is sample file "%s".' % filename)
+            log.debug('Is sample file "%s".', filename)
             return False
 
         # Minimal size
         if self.filesizeBetween(filename, self.minimal_filesize['media']):
-            log.debug('File to small: %s' % filename)
+            log.debug('File to small: %s', filename)
             return False
 
         # All is OK
@@ -681,14 +674,14 @@ class Scanner(Plugin):
 
     def isSampleFile(self, filename):
         is_sample = re.search('(^|[\W_])sample\d*[\W_]', filename.lower())
-        if is_sample: log.debug('Is sample file: %s' % filename)
+        if is_sample: log.debug('Is sample file: %s', filename)
         return is_sample
 
     def filesizeBetween(self, file, min = 0, max = 100000):
         try:
             return (min * 1048576) < os.path.getsize(file) < (max * 1048576)
         except:
-            log.error('Couldn\'t get filesize of %s.' % file)
+            log.error('Couldn\'t get filesize of %s.', file)
 
         return False
 
@@ -791,7 +784,7 @@ class Scanner(Plugin):
                         'year': guess.get('year'),
                     }
             except:
-                log.debug('Could not detect via guessit "%s": %s' % (file_name, traceback.format_exc()))
+                log.debug('Could not detect via guessit "%s": %s', (file_name, traceback.format_exc()))
 
         # Backup to simple
         cleaned = ' '.join(re.split('\W+', simplifyString(release_name)))
