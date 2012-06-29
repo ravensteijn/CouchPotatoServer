@@ -35,7 +35,6 @@
 			padding: 11px 15px;
 			font-weight: normal;
 			transition: all 0.1s ease-in-out;
-			transform: translateZ(0);
 			color: rgba(255, 255, 255, 0.8);
 		}
 			.page.settings .tabs a:hover, .page.settings .tabs .active a {
@@ -50,7 +49,6 @@
 			padding: 0;
 			overflow: hidden;
 			transition: all 1s ease-in-out;
-			transform: translateZ(0);
 			max-height: 0;
 		}
 			.page.settings .tabs > .active .subtabs {
@@ -332,15 +330,16 @@
 
 	.page .tag_input > ul {
 		list-style: none;
-		line-height: 20px;
 		padding: 3px 0;
 		border-radius: 3px;
 		cursor: text;
-		width: 31%;
+		width: 30%;
 		margin: 0 !important;
+		height: 27px;
+		line-height: 0;
+		display: inline-block;
 	}
 		.page .tag_input:hover > ul {
-			width: 50%;
 			border-radius: 3px 0 0 3px;
 		}
 		.page .tag_input:hover .formHint { display: none; }
@@ -354,6 +353,7 @@
 			margin: 0 !important;
 			border-width: 0;
 			background: 0;
+			line-height: 20px;
 		}
 		.page .tag_input > ul > li:first-child { min-width: 4px; }
 			.page .tag_input li.choice {
