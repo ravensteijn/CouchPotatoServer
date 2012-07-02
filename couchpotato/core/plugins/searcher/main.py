@@ -84,7 +84,7 @@ class Searcher(Plugin):
         if not default_title:
             return
 
-        fireEvent('notify.frontend', type = 'searcher.started.%s' % movie['id'], data = True)
+        fireEvent('notify.frontend', type = 'searcher.started.%s' % movie['id'], data = True, message = 'Searching for "%s"' % default_title)
 
         ret = False
         for quality_type in movie['profile']['types']:
@@ -159,8 +159,9 @@ class Searcher(Plugin):
                         continue
 
                     if nzb['score'] <= 0:
-                        log.debug('No more releases with score higher than 0')
-                        break
+                        log.info('Ignored, score to low: %s', nzb['name'])
+                        continue
+
                     downloaded = self.download(data = nzb, movie = movie)
                     if downloaded is True:
                         ret = True
