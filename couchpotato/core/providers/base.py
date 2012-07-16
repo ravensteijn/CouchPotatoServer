@@ -3,6 +3,9 @@ from couchpotato.core.logger import CPLog
 from couchpotato.core.plugins.base import Plugin
 from couchpotato.environment import Env
 from urlparse import urlparse
+from urllib import quote_plus
+from couchpotato.core.helpers.encoding import simplifyString
+
 import re
 import time
 
@@ -62,8 +65,11 @@ class YarrProvider(Provider):
     def search(self, movie, quality):
         return []
 
-    def belongsTo(self, url, host = None):
+    def belongsTo(self, url, provider = None, host = None):
         try:
+            if provider and provider == self.getName():
+                return self
+
             hostname = urlparse(url).hostname
             if host and hostname in host:
                 return self

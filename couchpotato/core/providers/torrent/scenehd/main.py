@@ -1,18 +1,10 @@
 from bs4 import BeautifulSoup
 from couchpotato.core.event import fireEvent
-from couchpotato.core.helpers.variable import tryInt, getTitle
+from couchpotato.core.helpers.encoding import simplifyString, tryUrlencode
+from couchpotato.core.helpers.variable import getTitle, tryInt
 from couchpotato.core.logger import CPLog
 from couchpotato.core.providers.torrent.base import TorrentProvider
-import StringIO
-import gzip
-import re
 import traceback
-import urllib
-import urllib2
-import cookielib
-from urllib import quote_plus
-from urllib2 import URLError
-
 
 log = CPLog(__name__)
 
@@ -21,11 +13,12 @@ class SceneHD(TorrentProvider):
 
     urls = {
         'test': 'http://scenehd.org/',
+        'login' : 'http://scenehd.org/takelogin.php',
         'detail': 'http://scenehd.org/details.php?id=%s',
-        'search': 'http://scenehd.org/browse.php?ajax&search=%s',
+        'search': 'http://scenehd.org/browse.php?ajax',
         'download': 'http://scenehd.org/download.php?id=%s',
     }
-   
+
     http_time_between_calls = 1 #seconds
 
     def search(self, movie, quality):
@@ -34,86 +27,75 @@ class SceneHD(TorrentProvider):
         if self.isDisabled():
             return results
 
+        q = '"%s %s" %s' % (simplifyString(getTitle(movie['library'])), movie['library']['year'], quality.get('identifier'))
+        arguments = tryUrlencode({
+            'search': q,
+        })
+        url = "%s&%s" % (self.urls['search'], arguments)
+
+        # Cookie login
+        if not self.login_opener and not self.login():
+            return results
+
         cache_key = 'scenehd.%s.%s' % (movie['library']['identifier'], quality.get('identifier'))
-        searchUrl =  self.urls['search'] % (quote_plus(getTitle(movie['library']) + ' ' + quality['identifier']))
-        data = self.getCache(cache_key, searchUrl)
+        data = self.getCache(cache_key, url, opener = self.login_opener)
 
         if data:
-            
+            html = BeautifulSoup(data)
+
             try:
-                cookiejar = cookielib.CookieJar()
-                opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookiejar))
-                urllib2.install_opener(opener)
-                params = urllib.urlencode(dict(username=''+self.conf('username'), password=''+self.conf('password'), ssl='yes'))
-                f = opener.open('http://scenehd.org/takelogin.php', params)
-                data = f.read()
-                f.close()
-                f = opener.open(searchUrl)
-                data = f.read()
-                f.close()
-            
-            except (IOError, URLError):
-                log.error('Failed to open %s.' % url)
+                resultsTable = html.find_all('table')[6]
+                entries = resultsTable.find_all('tr')
+                for result in entries[1:]:
+
+                    all_cells = result.find_all('td')
+
+                    detail_link = all_cells[2].find('a')
+                    details = detail_link['href']
+                    id = details.replace('details.php?id=', '')
+
+                    leechers = all_cells[11].find('a')
+                    if leechers:
+                        leechers = leechers.string
+                    else:
+                        leechers = all_cells[11].string
+
+                    new = {
+                        'id': id,
+                        'name': detail_link['title'],
+                        'type': 'torrent',
+                        'check_nzb': False,
+                        'description': '',
+                        'provider': self.getName(),
+                        'size': self.parseSize(all_cells[7].string),
+                        'seeders': tryInt(all_cells[10].find('a').string),
+                        'leechers': tryInt(leechers),
+                        'url': self.urls['download'] % id,
+                        'download': self.loginDownload,
+                    }
+
+                    imdb_link = all_cells[1].find('a')
+                    imdb_results = self.imdbMatch(imdb_link['href'], movie['library']['identifier']) if imdb_link else False
+
+                    new['score'] = fireEvent('score.calculate', new, movie, single = True)
+                    is_correct_movie = fireEvent('searcher.correct_movie', nzb = new, movie = movie, quality = quality,
+                                                     imdb_results = imdb_results, single_category = False, single = True)
+
+                    if is_correct_movie:
+                        results.append(new)
+                        self.found(new)
+
                 return results
 
-        html = BeautifulSoup(data)
-        
-        try:
-            resultsTable = html.findAll('table')[6]
-            entries = resultsTable.findAll('tr')
-            for result in entries[1:]:
-                new = {
-                    'type': 'torrent',
-                    'check_nzb': False,
-                    'description': '',
-                    'provider': self.getName(),
-                }
+            except:
+                log.error('Failed getting results from %s: %s', (self.getName(), traceback.format_exc()))
 
-                allCells = result.findAll('td')
-                new['size'] = self.parseSize(allCells[7].string.replace('GiB', 'GB'))
-                new['seeders'] = allCells[10].find('a').string
-                leechers = allCells[11].find('a')
-                if leechers:
-                    new['leechers'] = leechers.string
-                else:
-                    new['leechers'] = allCells[11].string
-               
-                detailLink = allCells[2].find('a')
-                details = detailLink['href']
-                new['id'] = details.replace('details.php?id=', '')
-                new['name'] = detailLink['title']
-            
-                imdbLink = allCells[1].find('a')
-                if imdbLink:
-                    new['imdbresult'] = imdbLink['href'].replace('http://www.imdb.com/title/','').rstrip('/')
-                else:
-                    new['imdbresult'] = 'tt00000000'
-               
-                new['url'] = self.urls['download'] % new['id']
-                new['imdbid'] = movie['library']['identifier']
-                new['extra_score'] = self.extra_score
-                new['score'] = fireEvent('score.calculate', new, movie, single = True)
-                is_correct_movie = fireEvent('searcher.correct_movie', nzb = new, movie = movie, quality = quality,
-                                                 imdb_results = True, single_category = False, single = True)
-
-                if is_correct_movie:
-                    new['download'] = self.download
-                    results.append(new)
-                    self.found(new)
-            return results
-        
-        except: 
-            log.info("No results found at SceneHD")
-            return []
-
-    def extra_score(self, nzb):
-        imdbIdAlt = re.sub('tt[0]*', 'tt', nzb['imdbresult'])
-        if nzb['imdbresult'] == nzb['imdbid'] or imdbIdAlt == nzb['imdbid']:
-            return 50
-        return 0
-
-    def download(self, url = '', nzb_id = ''):
-        torrent = self.urlopen(url)
-        return torrent
+        return []
 
 
+    def getLoginParams(self, params):
+        return tryUrlencode({
+            'username': self.conf('username'),
+            'password': self.conf('password'),
+            'ssl': 'yes',
+        })

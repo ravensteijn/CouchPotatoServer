@@ -193,7 +193,7 @@ class Searcher(Plugin):
             if filedata is 'try_next':
                 return filedata
 
-        successful = fireEvent('download', data = data, movie = movie, manual = manual, single = True, filedata = filedata)
+        successful = fireEvent('download', data = data, movie = movie, manual = manual, filedata = filedata, single = True)
 
         if successful:
 

@@ -1,7 +1,7 @@
 from couchpotato import get_session
 from couchpotato.api import addApiView
 from couchpotato.core.event import addEvent, fireEvent, fireEventAsync
-from couchpotato.core.helpers.encoding import toUnicode
+from couchpotato.core.helpers.encoding import toUnicode, ss
 from couchpotato.core.helpers.request import jsonified
 from couchpotato.core.helpers.variable import getExt, mergeDicts, getTitle
 from couchpotato.core.logger import CPLog
@@ -165,7 +165,6 @@ class Renamer(Plugin):
                         # Group filename without cd extension
                         replacements['cd'] = ''
                         replacements['cd_nr'] = ''
-                        group['filename'] = self.doReplace(file_name, replacements)[:-(len(getExt(final_file_name)) + 1)]
 
                         # Meta naming
                         if file_type is 'trailer':
@@ -238,6 +237,7 @@ class Renamer(Plugin):
                             )
                             rename_files = mergeDicts(rename_files, rename_extras)
 
+                            group['filename'] = self.doReplace(file_name, replacements)[:-(len(getExt(final_file_name)) + 1)]
                             group['destination_dir'] = os.path.join(destination, final_folder_name)
 
                         if multiple:
@@ -419,6 +419,7 @@ class Renamer(Plugin):
                     raise
 
     def moveFile(self, old, dest):
+        dest = ss(dest)
         try:
             shutil.move(old, dest)
 

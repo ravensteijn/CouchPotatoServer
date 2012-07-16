@@ -1,5 +1,6 @@
 from couchpotato.api import addApiView
 from couchpotato.core.event import fireEvent, addEvent, fireEventAsync
+from couchpotato.core.helpers.encoding import ss
 from couchpotato.core.helpers.request import jsonified, getParam
 from couchpotato.core.logger import CPLog
 from couchpotato.core.plugins.base import Plugin
@@ -73,6 +74,13 @@ class Manage(Plugin):
             for done_movie in done_movies:
                 if done_movie['library']['identifier'] not in added_identifiers:
                     fireEvent('movie.delete', movie_id = done_movie['id'], delete_from = 'all')
+                else:
+                    for release in done_movie.get('releases', []):
+                        for release_file in release.get('files', []):
+                            # Remove release not available anymore
+                            if not os.path.isfile(ss(release_file['path'])):
+                                fireEvent('release.clean', release['id'])
+                                break
 
         Env.prop('manage.last_update', time.time())
 
